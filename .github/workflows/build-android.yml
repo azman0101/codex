@@ -52,6 +52,7 @@ jobs:
             .build/*/termux-packages/output/codex-termux-build-*.json
             .build/*/termux-packages/output/codex-termux-toolchain.lock
             .build/*/termux-packages/output/lockfiles-*/**
+            .build/*/termux-packages/output/gn-*/**
             .build/*/framework.commit
             .build/*/image.digest
             .build/*/source.json

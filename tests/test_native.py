@@ -181,6 +181,69 @@ termux_step_pre_configure
             self.assertIn('fixture-stale',(records/'codex-upstream-before.lock').read_text())
             self.assertNotIn('fixture-stale',(records/'codex-upstream-after.lock').read_text())
 
+    def v8_build_fixture(self, arch="aarch64", status=0, ndk_version="r29"):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            v8 = root / "codex-rs/librusty_v8"
+            (v8 / "third_party").mkdir(parents=True)
+            ndk = root / "installed ndk"
+            ndk.mkdir()
+            script = '''set -Eeuo pipefail
+source "$TEST_RECIPE"
+codex_prepare_lockfile() { :; }
+termux_setup_ninja() { :; }
+termux_setup_gn() { :; }
+gn() { :; }
+cargo() {
+    printf '%s\\n' "$*" > "$TEST_CARGO_LOG"
+    local generated="target/$CARGO_TARGET_NAME/release/gn_out"
+    mkdir -p "$generated"
+    printf '%s\\n' "$EXTRA_GN_ARGS" > "$generated/args.gn"
+    return "$TEST_BUILD_STATUS"
+}
+__build_rusty_v8
+'''
+            env = os.environ | {
+                "TEST_RECIPE": str(ROOT / "recipe/codex-termux/build.sh"),
+                "TEST_CARGO_LOG": str(root / "cargo.log"),
+                "TEST_BUILD_STATUS": str(status),
+                "TERMUX_PKG_SRCDIR": str(root / "codex-rs"),
+                "CODEX_BUILD_METADATA": str(root / "output/build.json"),
+                "CODEX_RUST_TOOLCHAIN": "1.95.0",
+                "TERMUX_ARCH": arch, "CARGO_TARGET_NAME": f"{arch}-linux-android",
+                "CCTERMUX_HOST_PLATFORM": f"{arch}-linux-android",
+                "NDK": str(ndk), "TERMUX_NDK_VERSION": ndk_version,
+                "TERMUX_PKG_API_LEVEL": "24", "TERMUX_PKG_MAKE_PROCESSES": "2",
+            }
+            result = subprocess.run(["bash", "-s"], input=script, cwd=root,
+                                    env=env, text=True, capture_output=True)
+            if not ndk_version:
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Termux NDK version is required", result.stderr)
+                self.assertFalse((root / "cargo.log").exists())
+                return
+            self.assertEqual(result.returncode, status, result.stdout + result.stderr)
+            cpu = "arm64" if arch == "aarch64" else "x64"
+            expected = [
+                'target_os="android"', f'target_cpu="{cpu}"', f'v8_target_cpu="{cpu}"',
+                'android_ndk_api_level=24', f'android_ndk_root="{ndk}"',
+                f'android_ndk_version="{ndk_version}"']
+            records = root / f"output/gn-{arch}"
+            self.assertEqual((records / "extra-args.gn").read_text().split(), " ".join(expected).split())
+            self.assertEqual((records / "args.gn").read_text(), (records / "extra-args.gn").read_text())
+            self.assertEqual((v8 / "third_party/android_ndk").resolve(), ndk)
+            self.assertIn("--locked --features v8_enable_sandbox", (root / "cargo.log").read_text())
+
+    def test_v8_build_passes_android_ndk_and_target_args(self):
+        for arch in ("aarch64", "x86_64"):
+            with self.subTest(arch=arch): self.v8_build_fixture(arch)
+
+    def test_v8_build_preserves_failure_and_gn_args(self):
+        self.v8_build_fixture(status=101)
+
+    def test_v8_build_rejects_missing_ndk_version(self):
+        self.v8_build_fixture(ndk_version="")
+
     def test_dependency_constraints(self):
         self.assertEqual(tools.dependencies('libc++ (>= 1:2.3-1), openssl')[0],
                          {"name": "libc++", "operator": ">=", "version": "1:2.3-1"})

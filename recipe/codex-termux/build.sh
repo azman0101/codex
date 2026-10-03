@@ -107,18 +107,27 @@ __build_rusty_v8() {
 	termux_setup_ninja
 	termux_setup_gn
 
+	: "${NDK:?Termux NDK directory is required}"
+	: "${TERMUX_NDK_VERSION:?Termux NDK version is required}"
+	: "${TERMUX_PKG_API_LEVEL:?Android API level is required}"
+	local gn_cpu
+	case "$TERMUX_ARCH" in
+		aarch64) gn_cpu=arm64 ;;
+		x86_64) gn_cpu=x64 ;;
+		*) echo "Unsupported V8 Android architecture: $TERMUX_ARCH" >&2; return 1 ;;
+	esac
 	export EXTRA_GN_ARGS="
+target_os=\"android\"
+target_cpu=\"$gn_cpu\"
+v8_target_cpu=\"$gn_cpu\"
 android_ndk_api_level=$TERMUX_PKG_API_LEVEL
 android_ndk_root=\"$NDK\"
 android_ndk_version=\"$TERMUX_NDK_VERSION\"
 "
 
-	if [ "$TERMUX_ARCH" = "arm" ]; then
-		EXTRA_GN_ARGS+=" target_cpu = \"arm\""
-		EXTRA_GN_ARGS+=" v8_target_cpu = \"arm\""
-		EXTRA_GN_ARGS+=" arm_arch = \"armv7-a\""
-		EXTRA_GN_ARGS+=" arm_float_abi = \"softfp\""
-	fi
+	local gn_records="$(dirname "$CODEX_BUILD_METADATA")/gn-$TERMUX_ARCH"
+	mkdir -p "$gn_records"
+	printf '%s\n' "$EXTRA_GN_ARGS" > "$gn_records/extra-args.gn"
 
 	# shellcheck disable=SC2155 # Ignore command exit-code
 	export GN="$(command -v gn)"
@@ -134,15 +143,20 @@ android_ndk_version=\"$TERMUX_NDK_VERSION\"
 	export "$env_name"="$BINDGEN_EXTRA_CLANG_ARGS"
 
 	export V8_FROM_SOURCE=1
-	# TODO: How to track the output of v8's build.rs without passing `-vv`
+	local build_status=0
 	cargo +"$CODEX_RUST_TOOLCHAIN" build --locked \
 		--features v8_enable_sandbox \
-		--jobs "${TERMUX_PKG_MAKE_PROCESSES}" --target "${CARGO_TARGET_NAME}" --release
+		--jobs "${TERMUX_PKG_MAKE_PROCESSES}" --target "${CARGO_TARGET_NAME}" --release || build_status=$?
+	local generated_args="$__SRC_DIR/target/$CARGO_TARGET_NAME/release/gn_out/args.gn"
+	if [[ -f "$generated_args" ]]; then
+		cp "$generated_args" "$gn_records/args.gn"
+	fi
 
 	unset BINDGEN_EXTRA_CLANG_ARGS "$env_name" V8_FROM_SOURCE
 	unset EXTRA_GN_ARGS
 
 	popd # "$__SRC_DIR"
+	return "$build_status"
 }
 
 __install_rusty_v8() {

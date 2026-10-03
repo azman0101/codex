@@ -4,7 +4,7 @@ Build Android de [Codex CLI 0.160.0](https://github.com/openai/codex/releases/ta
 
 Le tag `rust-v0.160.0` désigne **Codex**. La toolchain du compilateur Rust déclarée par ces sources est **1.95.0** ; ce sont deux versions distinctes.
 
-**Validation actuelle :** 38 tests locaux réussis. Les cinq patches actifs ont été appliqués sans fuzz aux fichiers amont exacts de `cc 1.2.55`, `rusty_v8 150.4.0` et Chromium `8acb33ac`. Le build Android complet et l’exécution sur téléphone restent à valider. Un artefact binaire n’est disponible qu’après un build réussi.
+**Validation actuelle :** 41 tests locaux réussis. Les six patches actifs ont été appliqués sans fuzz aux fichiers amont exacts de `cc 1.2.55`, `rusty_v8 150.4.0` et Chromium `8acb33ac`. Le build Android complet et l’exécution sur téléphone restent à valider. Un artefact binaire n’est disponible qu’après un build réussi.
 
 ## Compiler avec GitHub Actions
 
@@ -61,13 +61,15 @@ Les livraisons finales sont dans `dist/`. Le framework, son commit, le digest Do
 
 Les lockfiles sont préparés avec `cargo metadata` avant le premier vendoring et après l’activation des patches locaux. Leurs états avant/après et les changements de dépendances sont enregistrés dans `output/lockfiles-<architecture>/` du framework et livrés avec les métadonnées. Un changement des versions V8/cc ou des révisions Git existantes est refusé. Le vendoring et la compilation utilisent ensuite `--locked`.
 
+La recette transmet à GN le chemin et la version du NDK sélectionné par le framework Termux, l’API Android et les CPU de la cible. Le patch Chromium déclare `android_ndk_root` et `android_ndk_version` pour rendre ces arguments effectifs. Les arguments supplémentaires et le fichier GN généré sont conservés dans `output/gn-<architecture>/` et livrés avec les métadonnées, même si la compilation V8 échoue.
+
 Par défaut, la version Rust exacte déclarée par Codex est utilisée. `CODEX_RUST_TOOLCHAIN` permet un remplacement explicite par une version exacte ou une nightly datée ; un canal flottant est refusé.
 
 Le champ de version du workflow ne garantit pas la compatibilité de toutes les versions Codex. `recipe/codex-termux/profile.json` décrit le profil inspecté, **0.160.0**. Une autre version demande l’adaptation et la vérification du profil et des patches ; elle n’est jamais remplacée silencieusement par une version plus ancienne.
 
 ## Sources et tests
 
-La recette active applique deux patches cc, un patch de sélection des artefacts V8 par cible, un patch bindgen et un patch sysroot. Les neuf patches historiques de 0.122.0 sont conservés dans `legacy/tur-0.122.0/codex/` et décrits dans `inspection.md`.
+La recette active applique deux patches cc, un patch de sélection des artefacts V8 par cible, un patch bindgen, un patch sysroot et un patch de déclaration des arguments NDK Android. Les neuf patches historiques de 0.122.0 sont conservés dans `legacy/tur-0.122.0/codex/` et décrits dans `inspection.md`.
 
 L’ancien patch CPAL du TUI est retiré : l’audio a été réorganisé en amont, et CPAL du voice host exclut déjà Android. Les trois patches jumbo sont retirés du build actif, qui n’active pas ce mode. V8 est construit avec `v8_enable_sandbox`, comme la dépendance Code Mode de 0.160.0.
 
