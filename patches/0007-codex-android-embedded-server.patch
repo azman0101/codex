@@ -1,0 +1,14 @@
+diff --git a/codex-rs/tui/src/startup_orchestration.rs b/codex-rs/tui/src/startup_orchestration.rs
+index a0ff9cb..c49b5cc 100644
+--- a/codex-rs/tui/src/startup_orchestration.rs
++++ b/codex-rs/tui/src/startup_orchestration.rs
+@@ -491,7 +491,8 @@ pub(super) async fn run_main_inner(
+     } else {
+         None
+     };
+-    let auto_start_daemon = config.features.enabled(Feature::DaemonAutoStart)
++    let auto_start_daemon = !cfg!(target_os = "android")
++        && config.features.enabled(Feature::DaemonAutoStart)
+         && !cli.agents_overview
+         && !cli.no_daemon
+         && !app_server_target.uses_remote_workspace();
