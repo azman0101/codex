@@ -37,7 +37,7 @@
     "archive_sha256": "ae7eced47d1ec7b9fdb47ca82fe369c381c2358de676dc66d9096827feadf7c7",
     "binaries": ["bin/codex", "bin/codex-code-mode-host"]
   },
-  "android_device_validation": "transferred via ADB to Android 16 device (aarch64); SHA-256 verified; Bionic flock validated with standalone ELF probe; embedded daemon mode verified",
+  "android_device_validation": "passed: installed and verified on physical Android 16 device (aarch64) in Termux; interactive CLI and embedded mode running successfully",
   "offline_regression_python": "3.12.14",
   "gn_provisioning": [
     {
