@@ -1,0 +1,15 @@
+diff --git a/src/binding.rs b/src/binding.rs
+index 4a1ff28..0878a1a 100644
+--- a/src/binding.rs
++++ b/src/binding.rs
+@@ -4,3 +4,10 @@
+ #![allow(non_snake_case)]
+ #![allow(unsafe_op_in_unsafe_fn)]
+ include!(env!("RUSTY_V8_SRC_BINDING_PATH"));
++
++#[allow(non_upper_case_globals)]
++pub const v8_String_WriteFlags_kNone: WriteFlags__bindgen_ty_1 = WriteFlags_kNone;
++#[allow(non_upper_case_globals)]
++pub const v8_String_WriteFlags_kNullTerminate: WriteFlags__bindgen_ty_1 = WriteFlags_kNullTerminate;
++#[allow(non_upper_case_globals)]
++pub const v8_String_WriteFlags_kReplaceInvalidUtf8: WriteFlags__bindgen_ty_1 = WriteFlags_kReplaceInvalidUtf8;
