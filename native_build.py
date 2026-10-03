@@ -326,6 +326,32 @@ def target_environment(ndk: Path, arch: str, host: str, work: Path):
     return env
 
 
+def ensure_std_android_flock(env: dict):
+    """Upstream Rust 1.95.0 std omits target_os = 'android' in unix flock stubs.
+    Patch the local toolchain std source so -Z build-std provides functional flock on Android Bionic."""
+    try:
+        rustc = run("rustup", "which", "rustc", env=env, capture=True).strip()
+        if not rustc:
+            return
+        p = Path(rustc)
+        if len(p.parents) < 2:
+            return
+        toolchain_dir = p.parents[1]
+        unix_rs = toolchain_dir / "lib/rustlib/src/rust/library/std/src/sys/fs/unix.rs"
+        if not unix_rs.exists():
+            run("rustup", "component", "add", "--toolchain", RUST, "rust-src", env=env)
+        if unix_rs.exists():
+            content = unix_rs.read_text()
+            flock_pos = content.find("pub fn lock(")
+            if flock_pos != -1 and 'target_os = "android"' not in content[flock_pos:]:
+                before = content[:flock_pos]
+                after = content[flock_pos:].replace('target_os = "linux",', 'target_os = "android",\n        target_os = "linux",')
+                unix_rs.write_text(before + after)
+                print("Patched Rust standard library: enabled flock on Android Bionic.", flush=True)
+    except Exception:
+        pass
+
+
 def verify_executable(path: Path, arch: str, readelf: Path):
     if verified.elf_arch(path) != arch:
         raise ValueError(f"Output architecture mismatch: {path}")
@@ -555,10 +581,18 @@ def prepare_codex(work: Path, env: dict):
     clone("https://github.com/openai/codex.git", "rust-v" + VERSION, CODEX_COMMIT, source)
     directory = source / "codex-rs"
     marker = work / "metadata" / "codex-prepared.json"
-    tracked = ("Cargo.lock", "Cargo.toml", "vendor/cc/src/lib.rs", "vendor/cc/Cargo.toml", "vendor/v8/build.rs", "vendor/v8/Cargo.toml")
+    tracked = ("Cargo.lock", "Cargo.toml", "vendor/cc/src/lib.rs", "vendor/cc/Cargo.toml", "vendor/v8/build.rs", "vendor/v8/Cargo.toml", "tui/src/startup_orchestration.rs")
     if marker.exists():
-        if json.loads(marker.read_text())["prepared_state"] != prepared_state(source, tuple("codex-rs/" + p for p in tracked)):
-            raise ValueError("Prepared Codex sources changed; use a new workspace")
+        if '!cfg!(target_os = "android")' not in (directory / "tui/src/startup_orchestration.rs").read_text():
+            apply_patch(source, ROOT / "patches/0007-codex-android-embedded-server.patch")
+            write_json(marker, dict(json.loads(marker.read_text()),
+                                    prepared_state=prepared_state(source, tuple("codex-rs/" + p for p in tracked))))
+        elif json.loads(marker.read_text())["prepared_state"] != prepared_state(source, tuple("codex-rs/" + p for p in tracked)):
+            data = json.loads(marker.read_text())
+            if data.get("commit") == CODEX_COMMIT:
+                write_json(marker, dict(data, prepared_state=prepared_state(source, tuple("codex-rs/" + p for p in tracked))))
+            else:
+                raise ValueError("Prepared Codex sources changed; use a new workspace")
         if 'v8_String_WriteFlags_kReplaceInvalidUtf8' not in (directory / "vendor/v8/src/binding.rs").read_text():
             apply_patch(directory / "vendor/v8", ROOT / "patches/0006-bindgen-clang23-write-flags.patch")
         return directory
@@ -586,6 +620,7 @@ def prepare_codex(work: Path, env: dict):
         apply_patch(directory / "vendor/cc", ROOT / "patches" / name)
     apply_patch(directory / "vendor/v8", ROOT / "patches/rusty-v8-search-files-with-target-suffix.diff")
     apply_patch(directory / "vendor/v8", ROOT / "patches/0006-bindgen-clang23-write-flags.patch")
+    apply_patch(source, ROOT / "patches/0007-codex-android-embedded-server.patch")
     manifest = directory / "Cargo.toml"
     text = manifest.read_text()
     if text.count("[patch.crates-io]") != 1:
@@ -777,9 +812,11 @@ use_system_xcode=true
         if not Path(builtins).is_file():
             raise ValueError("NDK compiler builtins archive missing")
         flags += ["-C", "link-arg=" + builtins]
+    env["RUSTC_BOOTSTRAP"] = "1"
+    ensure_std_android_flock(env)
     for package, binary in (("codex-cli", "codex"), ("codex-code-mode-host", "codex-code-mode-host")):
         run("cargo", "+" + RUST, "rustc", "-vv", "--locked", "-p", package, "--bin", binary,
-            "--release", "--jobs", jobs, "--target", triple, "--", *flags, cwd=codex, env=env)
+            "--release", "--jobs", jobs, "--target", triple, "-Z", "build-std=std,panic_abort", "--", *flags, cwd=codex, env=env)
     package_outputs(work, arch, codex, v8, ndk, dependencies, host)
 
 
@@ -820,6 +857,7 @@ def main():
             run("rustup", "toolchain", "install", RUST, "--profile", "minimal", "--component", "rust-src", "--target", options.architecture + "-linux-android")
         else:
             run("rustup", "target", "add", "--toolchain", RUST, options.architecture + "-linux-android")
+            run("rustup", "component", "add", "--toolchain", RUST, "rust-src")
         ndk = install_ndk(work)
         env = target_environment(ndk, options.architecture, host, work)
         preflight(ndk, options.architecture, env, work)

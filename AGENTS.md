@@ -68,8 +68,9 @@ Do we cache compiled files? **Yes, extensively.**
 | **Full V8 ninja build → `librusty_v8.a`** (4,489 / 4,489 targets) | ✅ |
 | V8 crate compilation with rustc / bindgen (`libv8.rlib`) | ✅ (fixed, patch 0006) |
 | Codex `cargo rustc` for `codex` and `codex-code-mode-host` | ✅ |
-| **Packaging (`output/<arch>/codex-0.160.0-android-<arch>.tar.gz`)** | ✅ (376 MB) |
-| Validation on an Android device | ⏳ **next** (deploy via `install-codex-termux.sh`) |
+| **Packaging (`output/<arch>/codex-0.160.0-android-<arch>.tar.gz`)** | ✅ (388 MB, with Bionic flock & embedded mode) |
+| Device deployment via wireless ADB & Termux | ✅ (pushed & SHA-256 verified) |
+| Runtime execution on Android 16 / Termux | ✅ (Bionic flock verified; embedded mode default) |
 
 ### Fixes applied in this session
 
@@ -84,13 +85,15 @@ Do we cache compiled files? **Yes, extensively.**
    - `build/config/clang/BUILD.gn`: Chromium's Mac clang package has no Android `clang_rt` runtimes, so on a Mac host they are taken from `$android_ndk_root/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/21/lib`.
 8. **V8 `prepared_state` ordering**: `prepared_state()` tracks `build_diff_sha256` for the `build/` submodule. Patch 0005 was initially applied after `v8-prepared.json` had been written, causing `prepared_state` checksum mismatches on subsequent runs. Patch 0005 is now applied before recording `prepared_state`, and existing pre-0005 markers are automatically migrated.
 9. **Clang 23 bindgen enum mangling in rusty_v8**: Homebrew LLVM 23's libclang omits the outer `v8_String_` namespace prefix when mangling anonymous enum constants inside `v8::String::WriteFlags`, emitting `WriteFlags_kNullTerminate` and `WriteFlags_kReplaceInvalidUtf8` into `src_binding.rs`. Upstream `src/string.rs` expects `v8_String_WriteFlags_*`. Added `patches/0006-bindgen-clang23-write-flags.patch` providing compatibility aliases in `src/binding.rs`. (Note: when generating the patch, the hunk line count must be `@@ -4,3 +4,10 @@` to prevent `gpatch` from truncating `v8_String_WriteFlags_kReplaceInvalidUtf8`). The patch is applied to both `sources/rusty_v8` and `codex/vendor/v8`, and `prepare_codex()` validates that `kReplaceInvalidUtf8` is present.
+10. **Rust standard library Android `flock` omission** (`ensure_std_android_flock`): Upstream Rust 1.95.0 (`library/std/src/sys/fs/unix.rs`) omitted `target_os = "android"` in the `#[cfg(any(...))]` check guarding `flock(fd, ...)`, falling back to `io::ErrorKind::Unsupported` ("lock() not supported" / "try_lock() not supported"). Android Bionic libc supports `libc::flock`. The driver now patches the local toolchain's `sys/fs/unix.rs` and compiles Codex with `-Z build-std=std,panic_abort` (with `RUSTC_BOOTSTRAP=1`). Tested and verified with a standalone probe binary on the physical device via ADB.
+11. **Embedded app-server mode on Android (`patches/0007-codex-android-embedded-server.patch`)**: On desktop platforms, Codex attempts to auto-start a background daemon (`codex-app-server-daemon`) that expects a packaged directory with `codex-package.json`. On Android/Termux, background daemons are terminated by the OS, and no packaged updater exists, causing `"this CLI has no complete local package; install a packaged Codex CLI or use the standalone installer"`. Patch 0007 updates `tui/src/startup_orchestration.rs` so that `auto_start_daemon` is disabled on Android (`!cfg!(target_os = "android")`), allowing Codex to run cleanly in embedded server mode by default without requiring `--no-daemon`.
 
 ## Open issues and risks
 
-- **Physical device validation.** Binaries have been verified with `llvm-readelf` (ELF64 little-endian ARM aarch64, PIE, dynamic linking, correct RUNPATH `/data/data/com.termux/files/usr/lib`), but have not yet been booted and tested on a physical Android/Termux device.
+- **Terminal input / TUI rendering in Termux**: Verify full interactive TUI behavior (crossterm / alternate screen / keyboard events) inside the Termux app terminal.
 - **Mixed clang versions.** Objects were compiled with Chromium clang 23 and linked with NDK clang 21 builtins. Both binaries linked without symbols errors.
 - **Harmless GN warning.** GN reports `use_system_xcode=true` as "Build argument has no effect"; it is set in `build()` GN args.
-- **Reproducibility.** Before publishing final releases, a clean run in a fresh `CODEX_NATIVE_WORKDIR` can verify clean bootstrap end-to-end.
+- **Reproducibility.** A clean run in a fresh `CODEX_NATIVE_WORKDIR` can verify clean bootstrap end-to-end.
 - **Docs not yet updated.** `README.md` can be refreshed with the native build results and instructions.
 
 ## Debugging tips
