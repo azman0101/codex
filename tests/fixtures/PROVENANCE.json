@@ -1,0 +1,14 @@
+{
+  "android-config.gni": {
+    "sha256": "37f5da95bb36f34cf4c836cd3fa198303750681b295ab063e39df557df9a12a1"
+  },
+  "run_bindgen.py": {
+    "sha256": "9e56616ced1bcbf28781c8db8f505c00caae2d15a3b19dff23959ff955e35904"
+  },
+  "v8-build.rs": {
+    "sha256": "230d9299ee51f97e6d7605dda3ea67227d4540db6198c71cc013587b484d5351"
+  },
+  "cc-lib.rs": {
+    "sha256": "d7c6d3fd32758dfd1b3e172284ba39ed33c3f1ea823a6029d5ab455d11d84ee3"
+  }
+}

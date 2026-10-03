@@ -1,0 +1,61 @@
+--- a/build.rs
++++ b/build.rs
+@@ -497,38 +497,17 @@
+     } else {
+       "unknown"
+     };
+-    if target_arch == "x86_64" {
+-      maybe_install_sysroot("amd64");
+-    }
++    // Android uses its NDK sysroot; Mac host tools use the Xcode SDK.
+     gn_args.push(format!(r#"v8_target_cpu="{arch}""#).to_string());
+     gn_args.push(format!(r#"target_cpu="{arch}""#).to_string());
+     gn_args.push(r#"target_os="android""#.to_string());
+     gn_args.push("treat_warnings_as_errors=false".to_string());
+     gn_args.push("use_sysroot=true".to_string());
+ 
+-    // NDK 23 and above removes libgcc entirely.
+-    // https://github.com/rust-lang/rust/pull/85806
+-    if !Path::new("./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang++").exists() {
+-        assert!(Command::new("curl")
+-        .arg("-L")
+-        .arg("-o").arg("./third_party/android-ndk-r26c-linux.zip")
+-        .arg("https://dl.google.com/android/repository/android-ndk-r26c-linux.zip")
+-        .status()
+-        .unwrap()
+-        .success());
+-
+-        assert!(Command::new("unzip")
+-        .arg("-d").arg("./third_party/")
+-        .arg("-o")
+-        .arg("-q")
+-        .arg("./third_party/android-ndk-r26c-linux.zip")
+-        .status()
+-        .unwrap()
+-        .success());
+-
+-        fs::rename("./third_party/android-ndk-r26c", "./third_party/android_ndk").unwrap();
+-        fs::remove_file("./third_party/android-ndk-r26c-linux.zip").unwrap();
+-      }
++    // Native macOS Android build: use the verified caller-supplied Mac NDK.
++    let ndk = env::var("ANDROID_NDK_HOME").expect("Verified Android NDK is required");
++    assert!(cfg!(target_os = "macos"), "Native launcher requires a macOS host");
++    assert!(Path::new(&ndk).join("toolchains/llvm/prebuilt/darwin-x86_64/bin/clang").exists());
+     static CHROMIUM_URI: &str = "https://chromium.googlesource.com";
+     maybe_clone_repo(
+       "./third_party/android_platform",
+--- a/build/rust/gni_impl/run_bindgen.py
++++ b/build/rust/gni_impl/run_bindgen.py
+@@ -12,6 +12,12 @@
+ 
+ # Remove BINDGEN_EXTRA_CLANG_ARGS from env
+ os.environ.pop("BINDGEN_EXTRA_CLANG_ARGS", None)
++# GN provides explicit host/target clang flags. Cargo's target-specific
++# bindgen variables must not force Android headers onto Mac host actions.
++os.environ.pop("TARGET", None)
++for key in list(os.environ):
++  if key.startswith("BINDGEN_EXTRA_CLANG_ARGS_"):
++    os.environ.pop(key)
+ 
+ # Set up path to be able to import action_helpers.
+ sys.path.append(

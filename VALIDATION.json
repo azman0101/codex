@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-03",
+  "offline_regression_tests": 29,
+  "offline_regression_result": "passed",
+  "signed_dependency_staging": "passed",
+  "verified_dependency_resume": "passed",
+  "dependency_release_sha256": "26ad975e4f0b3c9a461d2053a14d83b2a0be9fdb0db797ce6d9bdb08660a1d1a",
+  "dependencies": [
+    {
+      "archive": "libcpp-26ad975e4f0b-aarch64.deb",
+      "name": "libc++",
+      "sha256": "53d0b84a7ba7459024257cb94d5b136fe13ef858567f65a8064b35950799f2ca",
+      "size": 341604,
+      "url": "https://packages-cf.termux.dev/apt/termux-main/pool/main/libc/libc++/libc++_30_aarch64.deb",
+      "version": "30"
+    },
+    {
+      "archive": "openssl-26ad975e4f0b-aarch64.deb",
+      "name": "openssl",
+      "sha256": "a2fb7856875e63ef6b90442752e05974813372c3ca86d2513a78ea43c67a0f8b",
+      "size": 2482764,
+      "url": "https://packages-cf.termux.dev/apt/termux-main/pool/main/o/openssl/openssl_1:3.6.5_aarch64.deb",
+      "version": "1:3.6.5"
+    },
+    {
+      "archive": "zlib-26ad975e4f0b-aarch64.deb",
+      "name": "zlib",
+      "sha256": "75e7d0af17fcc3b40004309fdc00a1ddb9ae08346dce5e269902c34ac3966ac9",
+      "size": 62840,
+      "url": "https://packages-cf.termux.dev/apt/termux-main/pool/main/z/zlib/zlib_1.3.2_aarch64.deb",
+      "version": "1.3.2"
+    }
+  ],
+  "macos_end_to_end_build": "not executed: macOS hardware unavailable",
+  "android_device_validation": "not executed",
+  "offline_regression_python": "3.12.14",
+  "gn_provisioning": [
+    {
+      "archive_sha256": "9cf33cd2d2426bb4559ab46174ec1031eac9919ed24971174327b6ab4331e415",
+      "binary_sha256": "e013c1b3521a32469f12eb5887eb4a83ece624bc6e58e8da48a951d72b8d90df",
+      "executable": "private workspace GN",
+      "git_revision": "3357c4f51b1a9e676378c695dd9c7e9911c35ee6",
+      "host": "aarch64-apple-darwin",
+      "instance_id": "nPM80tJCa7RVmrRhdOwQMerJkZ7SSXEXQye2q0Mx5BUC",
+      "package": "gn/gn/mac-arm64",
+      "macos_execution": "not executed: version call simulated on Linux",
+      "download_and_cache_resume": "passed",
+      "mach_o_cpu_verification": "passed",
+      "embedded_version": "2407 (3357c4f51b1a)"
+    },
+    {
+      "archive_sha256": "bb4dcd42e53a9965fa06711f614a6dfb180a90faa375082635c534dd412eb8e5",
+      "binary_sha256": "06bb4f809167322249fba3ce20f194450fea2ce6cc6afe881b97f9ea267876f9",
+      "executable": "private workspace GN",
+      "git_revision": "3357c4f51b1a9e676378c695dd9c7e9911c35ee6",
+      "host": "x86_64-apple-darwin",
+      "instance_id": "u03NQuU6mWX6BnEfYUpt-xgKkPqjdQgmNcU03UEuuOUC",
+      "package": "gn/gn/mac-amd64",
+      "macos_execution": "not executed: version call simulated on Linux",
+      "download_and_cache_resume": "passed",
+      "mach_o_cpu_verification": "passed",
+      "embedded_version": "2407 (3357c4f51b1a)"
+    }
+  ],
+  "gn_provisioning_note": "Real official CIPD downloads, SHA-256 verification, Mach-O CPU verification and offline cached resumes passed for both Mac hosts on Linux. Mac GN execution was simulated; full macOS setup/build and Android device validation were not performed."
+}

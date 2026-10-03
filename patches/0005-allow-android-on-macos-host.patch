@@ -1,0 +1,41 @@
+diff --git a/build/config/BUILDCONFIG.gn b/build/config/BUILDCONFIG.gn
+index 12595c1..6478bc5 100644
+--- a/build/config/BUILDCONFIG.gn
++++ b/build/config/BUILDCONFIG.gn
+@@ -250,7 +250,9 @@ _default_toolchain = ""
+ 
+ if (target_os == "android") {
+   # Targeting android on Mac is best-effort and not guaranteed to work.
+-  assert(host_os == "linux", "Android builds are only supported on Linux.")
++  # Native macOS host: the verified Mac NDK and Chromium Mac clang are used.
++  assert(host_os == "linux" || host_os == "mac",
++         "Android builds are only supported on Linux or macOS hosts.")
+   _default_toolchain = "//build/toolchain/android:android_clang_$target_cpu"
+ } else if (target_os == "chromeos" || target_os == "linux") {
+   # See comments in build/toolchain/cros/BUILD.gn about board compiles.
+diff --git a/build/config/clang/BUILD.gn b/build/config/clang/BUILD.gn
+index c38670a..8182367 100644
+--- a/build/config/clang/BUILD.gn
++++ b/build/config/clang/BUILD.gn
+@@ -5,6 +5,9 @@
+ import("//build/config/pch.gni")
+ import("//build/config/rust.gni")
+ import("clang.gni")
++if (is_android) {
++  import("//build/config/android/config.gni")
++}
+ 
+ if (is_ios) {
+   # For `target_environment` and `target_platform`.
+@@ -235,6 +238,11 @@ template("clang_lib") {
+       }
+ 
+       _clang_lib_dir = "$clang_base_path/lib/clang/$clang_version/lib"
++      if (is_android && host_os == "mac") {
++        # Chromium's Mac clang package omits Android runtimes; use the pinned
++        # NDK r30 (clang 21) builtins instead.
++        _clang_lib_dir = "$android_ndk_root/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/21/lib"
++      }
+       _lib_file = "${_prefix}clang_rt.${_libname}${_suffix}.${_ext}"
+       libs = [ "$_clang_lib_dir/$_dir/$_lib_file" ]
+     }

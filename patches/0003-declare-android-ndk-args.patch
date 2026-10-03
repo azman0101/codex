@@ -1,0 +1,28 @@
+--- a/build/config/android/config.gni
++++ b/build/config/android/config.gni
+@@ -157,7 +157,14 @@
+     }
+   }
+ 
+-  android_ndk_root = "//third_party/android_toolchain/ndk"
++  declare_args() {
++    # The standalone V8 build uses the NDK selected by the Termux framework.
++    android_ndk_root = "//third_party/android_ndk"
++    # BUILD.gn uses this string to force rebuilding when the NDK changes.
++    android_ndk_version = ""
++  }
++  assert(android_ndk_version != "",
++         "Pass android_ndk_version for the installed Termux NDK in GN args.")
+ 
+   public_android_sdk_root = "//third_party/android_sdk/public"
+   public_android_sdk_platform_version = "37.0"
+--- a/build.rs
++++ b/build.rs
+@@ -1253,6 +1253,7 @@
+     dirs.root.display(),
+     gn_out_dir.display()
+   );
++  println!("GN args: {args}");
+   assert!(
+     Command::new(gn())
+       .arg(format!("--root={}", dirs.root.display()))
