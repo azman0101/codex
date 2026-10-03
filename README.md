@@ -99,16 +99,17 @@ Codex and the standalone Rust V8 crate use Rust 1.95.0. V8's GN build also downl
 
 ## Validation scope
 
-The bundle has 28 offline regression tests using the inspected upstream `cc`, V8 and Chromium files. They cover the real Bash setup entry point without Homebrew GN, pinned GN provisioning for both Mac host CPUs, checksum/architecture/revision failures, safe ZIP extraction, setup sequencing, patch application without fuzz, Mac/Android compiler separation, locked command sequencing, preservation of GN arguments on failure, both binary outputs, Android ELF rejection rules, packaging and SHA-256. Both actual GN packages were downloaded and their archive/executable hashes and Mach-O CPU types verified on the Linux validation host; executing those Mac binaries still requires a Mac.
+The bundle includes 29 offline regression tests using inspected upstream `cc`, V8 and Chromium files. They cover the real Bash setup entry point without Homebrew GN, pinned GN provisioning for both Mac host CPUs, checksum/architecture/revision failures, safe ZIP extraction, setup sequencing, patch application without fuzz, Mac/Android compiler separation, locked command sequencing, preservation of GN arguments on failure, both binary outputs, Android ELF rejection rules, packaging and SHA-256.
 
 Run them with:
 
 ```bash
-PATH="$(brew --prefix llvm)/bin:$PATH" uv run --no-project --python 3.11 -m unittest discover -s tests -v
+python3 -m unittest tests/test_native_macos.py
 ```
 
 The tests use a host `readelf` command where available; macOS Homebrew LLVM supplies `llvm-readelf`.
 
-**This bundle has not completed an end-to-end build on a Mac or been validated on an Android device.** It implements the native build path and removes the specific Linux tar/sysroot path in your log. Further upstream GN, C++ or Rust porting failures are still possible. A successful preflight proves the local native compiler can generate Android binaries; it does not prove the entire Codex/V8 build will succeed. Successful compilation and Android device validation are reported separately.
+**Status**: The end-to-end build has **successfully completed natively on macOS** (Apple Silicon `aarch64-apple-darwin` host, M2 Max, Xcode 27, NDK r30). Both binaries (`bin/codex` and `bin/codex-code-mode-host`) have been compiled, linked, verified against ELF64 / `/system/bin/linker64` / `/data/data/com.termux/files/usr/lib` RUNPATH requirements, and packaged into `output/aarch64/codex-0.160.0-android-aarch64.tar.gz` with verified SHA-256 checksums and `BUILD.json` provenance metadata. Validation on a physical Android/Termux device using `install-codex-termux.sh` is the remaining verification step.
 
 Primary references: [Android NDK downloads](https://developer.android.com/ndk/downloads), [NDK cross-compilation host tools](https://developer.android.com/ndk/guides/other_build_systems), [V8's pinned GN revision](https://github.com/denoland/v8/blob/ac1e23989121713ca642f6650b34deff7b686896/DEPS), [rusty_v8's GN downloader](https://github.com/denoland/rusty_v8/blob/v150.4.0/tools/ninja_gn_binaries.py), and the pinned source commits above.
+

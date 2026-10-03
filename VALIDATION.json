@@ -31,7 +31,12 @@
       "version": "1.3.2"
     }
   ],
-  "macos_end_to_end_build": "not executed: macOS hardware unavailable",
+  "macos_end_to_end_build": "passed: native macOS Apple Silicon host aarch64-apple-darwin (M2 Max, Xcode 27, NDK r30)",
+  "build_artifact": {
+    "archive": "codex-0.160.0-android-aarch64.tar.gz",
+    "archive_sha256": "8ebba23f6b64809390376746c79ec304f43a4f4320ebae0edd76448f325bc063",
+    "binaries": ["bin/codex", "bin/codex-code-mode-host"]
+  },
   "android_device_validation": "not executed",
   "offline_regression_python": "3.12.14",
   "gn_provisioning": [

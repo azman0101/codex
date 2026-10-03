@@ -559,6 +559,8 @@ def prepare_codex(work: Path, env: dict):
     if marker.exists():
         if json.loads(marker.read_text())["prepared_state"] != prepared_state(source, tuple("codex-rs/" + p for p in tracked)):
             raise ValueError("Prepared Codex sources changed; use a new workspace")
+        if 'v8_String_WriteFlags_kReplaceInvalidUtf8' not in (directory / "vendor/v8/src/binding.rs").read_text():
+            apply_patch(directory / "vendor/v8", ROOT / "patches/0006-bindgen-clang23-write-flags.patch")
         return directory
     if run("git", "status", "--porcelain", cwd=source, capture=True):
         raise ValueError("Interrupted source preparation. Rename sources/codex and rerun; Cargo caches are retained.")
@@ -583,6 +585,7 @@ def prepare_codex(work: Path, env: dict):
     for name in ("rust-cc-do-not-concatenate-all-the-CFLAGS.diff", "rust-cc-allow-warnings.diff"):
         apply_patch(directory / "vendor/cc", ROOT / "patches" / name)
     apply_patch(directory / "vendor/v8", ROOT / "patches/rusty-v8-search-files-with-target-suffix.diff")
+    apply_patch(directory / "vendor/v8", ROOT / "patches/0006-bindgen-clang23-write-flags.patch")
     manifest = directory / "Cargo.toml"
     text = manifest.read_text()
     if text.count("[patch.crates-io]") != 1:
@@ -590,7 +593,7 @@ def prepare_codex(work: Path, env: dict):
     manifest.write_text(text.replace("[patch.crates-io]", '[patch.crates-io]\ncc = { path = "./vendor/cc" }\nv8 = { path = "./vendor/v8" }'))
     normalize_lock(directory, records, "local-patches", env)
     write_json(marker, {"commit": CODEX_COMMIT, "version": VERSION, "cargo_lock_sha256": file_hash(directory / "Cargo.lock"),
-                       "prepared_state": prepared_state(source, tuple("codex-rs/" + p for p in tracked))})
+                        "prepared_state": prepared_state(source, tuple("codex-rs/" + p for p in tracked))})
     return directory
 
 
@@ -604,6 +607,7 @@ def prepare_v8(work: Path, ndk: Path, env: dict):
         apply_patch(directory, ROOT / "patches/0001-unset-BINDGEN_EXTRA_CLANG_ARGS-in-v8_s-bindgen.patch")
         apply_patch(directory, ROOT / "patches/0003-declare-android-ndk-args.patch")
         apply_patch(directory, ROOT / "patches/0005-allow-android-on-macos-host.patch")
+        apply_patch(directory, ROOT / "patches/0006-bindgen-clang23-write-flags.patch")
         patch = work / "metadata/0004-native-macos-android.patch"
         generated = native_v8_patch(directory)
         if generated != (ROOT / "patches/0004-native-macos-android.patch").read_text():
@@ -617,13 +621,24 @@ def prepare_v8(work: Path, ndk: Path, env: dict):
         marker_data = json.loads(marker.read_text())
         if 'host_os == "linux" || host_os == "mac"' not in (directory / "build/config/BUILDCONFIG.gn").read_text():
             apply_patch(directory, ROOT / "patches/0005-allow-android-on-macos-host.patch")
+        if 'v8_String_WriteFlags_kReplaceInvalidUtf8' not in (directory / "src/binding.rs").read_text():
+            apply_patch(directory, ROOT / "patches/0006-bindgen-clang23-write-flags.patch")
+        known_valid_roots = {
+            "74afe26e4581ba7820defc0d50fb0045a3187deefaddbf54595bdb07b24119a0",  # pre-0006
+            "3736b2185ff4ebf1da342e9ff8782a926e257a15dfcbc994a8c7ee1fe11ab09a",  # with 0006
+        }
+        known_valid_builds = {
+            "ccfb7b600340f891a9ed3e09148d4591bd4583bd362dd2a5935fac8ff29a343a",  # pre-0005
+            "ea57ca600ee3dcce1f364d585e2640029925de30a8469cd9ebd6289d81d0479a",  # with 0005
+        }
+        marker_state = marker_data.get("prepared_state", {})
+        if (marker_state.get("root_diff_sha256") in known_valid_roots and
+                marker_state.get("build_diff_sha256") in known_valid_builds and
+                marker_state.get("v8_diff_sha256") == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" and
+                marker_state.get("Cargo.lock") == "4cdeb9b5c6b2a964f6429b32e73218eb91bba1b0a34e8a28ddc456299dc2070b"):
             write_json(marker, dict(marker_data, prepared_state=prepared_state(directory, ("Cargo.lock",))))
-        elif marker_data.get("prepared_state") != prepared_state(directory, ("Cargo.lock",)):
-            pre_0005_build_diff = "ccfb7b600340f891a9ed3e09148d4591bd4583bd362dd2a5935fac8ff29a343a"
-            if marker_data.get("prepared_state", {}).get("build_diff_sha256") == pre_0005_build_diff:
-                write_json(marker, dict(marker_data, prepared_state=prepared_state(directory, ("Cargo.lock",))))
-            else:
-                raise ValueError("Prepared V8 sources changed; use a new workspace")
+        elif marker_state != prepared_state(directory, ("Cargo.lock",)):
+            raise ValueError("Prepared V8 sources changed; use a new workspace")
     link = directory / "third_party/android_ndk"
     if link.is_symlink():
         if link.resolve() != ndk.resolve():
