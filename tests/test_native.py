@@ -81,6 +81,106 @@ class NativeTests(unittest.TestCase):
         lock.write_text('[[package]]\nname="v8"\nversion="1.2.3"\n[[package]]\nname="v8"\nversion="2.0.0"\n')
         with self.assertRaises(ValueError): tools.v8_version(lock)
 
+    def lock_fixture(self, change=None, fail=False):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp)
+            original='''version = 4
+[[package]]
+name = "cc"
+version = "1.2.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+[[package]]
+name = "v8"
+version = "150.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+[[package]]
+name = "git-lib"
+version = "1.0.0"
+source = "git+https://github.com/example/repo?rev=abc#abc"
+'''
+            if change=='duplicate':
+                original+='''[[package]]
+name = "git-lib"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+'''
+            transformed=original+'[[package]]\nname="new-workspace-member"\nversion="0.160.0"\n'
+            if change=='cc': transformed=transformed.replace('1.2.55','1.2.56')
+            if change=='v8': transformed=transformed.replace('150.4.0','150.5.0')
+            if change=='git': transformed=transformed.replace('rev=abc#abc','rev=def#def')
+            if change=='local': transformed=transformed.replace('source = "registry+https://github.com/rust-lang/crates.io-index"\n','')
+            if change=='wrong-source': transformed=transformed.replace('git+https://github.com/example/repo?rev=abc#abc','git+https://github.com/example/another?rev=abc#abc')
+            before,after,report=tmp/'before.lock',tmp/'after.lock',tmp/'changes.json'
+            before.write_text(original)
+            after.write_text(transformed)
+            if fail:
+                with self.assertRaises(ValueError): tools.check_lock_transition(before,after,report)
+                self.assertTrue(json.loads(report.read_text())['errors'])
+            else:
+                tools.check_lock_transition(before,after,report)
+                result=json.loads(report.read_text())
+                self.assertEqual(result['errors'],[])
+                self.assertEqual(result['after_sha256'],tools.digest(after))
+                self.assertIn('new-workspace-member',[p['name'] for p in result['added']])
+
+    def test_lock_preparation_records_changes(self): self.lock_fixture()
+    def test_lock_rejects_cc_update(self): self.lock_fixture('cc',fail=True)
+    def test_lock_rejects_v8_update(self): self.lock_fixture('v8',fail=True)
+    def test_lock_rejects_git_revision_update(self): self.lock_fixture('git',fail=True)
+    def test_lock_allows_local_cc_and_v8(self): self.lock_fixture('local')
+    def test_lock_rejects_other_source_change(self): self.lock_fixture('wrong-source',fail=True)
+    def test_lock_preserves_multiple_sources(self): self.lock_fixture('duplicate')
+
+    def test_preconfigure_prepares_lock_before_locked_vendor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            rust=root/'codex-rs'
+            rust.mkdir()
+            (rust/'Cargo.toml').write_text('[workspace]\n[patch.crates-io]\n')
+            (rust/'Cargo.lock').write_text('# fixture-stale\n[[package]]\nname="cc"\nversion="1.2.55"\n[[package]]\nname="v8"\nversion="150.4.0"\n')
+            support=root/'support'
+            (support/'bin').mkdir(parents=True)
+            (support/'bin/uv').symlink_to(shutil.which('uv'))
+            (support/'tools.py').symlink_to(ROOT/'tools.py')
+            script='''set -Eeuo pipefail
+source "$TEST_RECIPE"
+termux_setup_rust() { :; }
+rustup() { :; }
+patch() { cat >/dev/null; }
+cargo() {
+    printf '%s\\n' "$*" >> "$TEST_CARGO_LOG"
+    if [[ "$2" == metadata ]]; then
+        sed -i '/fixture-stale/d' Cargo.lock
+    elif [[ "$2" == vendor ]]; then
+        [[ "$3" == --locked ]]
+        if grep -q fixture-stale Cargo.lock; then
+            echo 'cannot update the lock file because --locked was passed' >&2
+            return 101
+        fi
+        mkdir -p vendor/cc vendor/v8
+    fi
+}
+termux_step_pre_configure
+'''
+            log=root/'cargo.log'
+            env=os.environ | {
+                'TEST_RECIPE':str(ROOT/'recipe/codex-termux/build.sh'),
+                'TEST_CARGO_LOG':str(log),'CODEX_RUST_TOOLCHAIN':'1.95.0',
+                'CARGO_TARGET_NAME':'aarch64-linux-android','TERMUX_ARCH':'aarch64',
+                'CODEX_SUPPORT_DIR':str(support),
+                'CODEX_BUILD_METADATA':str(root/'output/build.json'),
+                'TERMUX_PKG_BUILDER_DIR':str(ROOT/'recipe/codex-termux'),
+            }
+            result=subprocess.run(['bash','-s'],input=script,cwd=root,env=env,text=True,capture_output=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertEqual(log.read_text().splitlines(),[
+                '+1.95.0 metadata --format-version 1',
+                '+1.95.0 vendor --locked',
+                '+1.95.0 metadata --format-version 1'])
+            records=root/'output/lockfiles-aarch64'
+            self.assertIn('fixture-stale',(records/'codex-upstream-before.lock').read_text())
+            self.assertNotIn('fixture-stale',(records/'codex-upstream-after.lock').read_text())
+
     def test_dependency_constraints(self):
         self.assertEqual(tools.dependencies('libc++ (>= 1:2.3-1), openssl')[0],
                          {"name": "libc++", "operator": ">=", "version": "1:2.3-1"})

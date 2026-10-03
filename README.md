@@ -4,7 +4,7 @@ Build Android de [Codex CLI 0.160.0](https://github.com/openai/codex/releases/ta
 
 Le tag `rust-v0.160.0` désigne **Codex**. La toolchain du compilateur Rust déclarée par ces sources est **1.95.0** ; ce sont deux versions distinctes.
 
-**Validation actuelle :** 30 tests locaux réussis. Les cinq patches actifs ont été appliqués sans fuzz aux fichiers amont exacts de `cc 1.2.55`, `rusty_v8 150.4.0` et Chromium `8acb33ac`. Le build Android complet et l’exécution sur téléphone restent à valider. Un artefact binaire n’est disponible qu’après un build réussi.
+**Validation actuelle :** 38 tests locaux réussis. Les cinq patches actifs ont été appliqués sans fuzz aux fichiers amont exacts de `cc 1.2.55`, `rusty_v8 150.4.0` et Chromium `8acb33ac`. Le build Android complet et l’exécution sur téléphone restent à valider. Un artefact binaire n’est disponible qu’après un build réussi.
 
 ## Compiler avec GitHub Actions
 
@@ -58,6 +58,8 @@ Docker sert à la compilation sur Linux. Le résultat s’exécute directement d
 Avant Docker, le script contrôle la release, la version inscrite dans les sources, V8, cc et la toolchain. Il remplit l’empreinte source dans une **copie** de la recette ; le framework Termux vérifie cette empreinte lors de son téléchargement. Un changement des sources lors d’une relance est refusé.
 
 Les livraisons finales sont dans `dist/`. Le framework, son commit, le digest Docker, le paquet intermédiaire et la toolchain sont conservés dans `.build/0.160.0/` et réutilisés dans ce dossier. Ces choix ne garantissent pas une reproductibilité bit à bit de toutes les dépendances.
+
+Les lockfiles sont préparés avec `cargo metadata` avant le premier vendoring et après l’activation des patches locaux. Leurs états avant/après et les changements de dépendances sont enregistrés dans `output/lockfiles-<architecture>/` du framework et livrés avec les métadonnées. Un changement des versions V8/cc ou des révisions Git existantes est refusé. Le vendoring et la compilation utilisent ensuite `--locked`.
 
 Par défaut, la version Rust exacte déclarée par Codex est utilisée. `CODEX_RUST_TOOLCHAIN` permet un remplacement explicite par une version exacte ou une nightly datée ; un canal flottant est refusé.
 

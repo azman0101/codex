@@ -113,6 +113,52 @@ def v8_version(lock: Path) -> str:
     return value
 
 
+def check_lock_transition(before: Path, after: Path, report: Path) -> None:
+    """Consigner une préparation Cargo sans changer les versions critiques/Git."""
+    old = tomllib.loads(before.read_text())["package"]
+    new = tomllib.loads(after.read_text())["package"]
+    errors = []
+    for name in ("cc", "v8"):
+        expected = {p["version"] for p in old if p["name"] == name}
+        actual = {p["version"] for p in new if p["name"] == name}
+        if expected and actual != expected:
+            errors.append(f"Versions {name} modifiées : {sorted(expected)} -> {sorted(actual)}")
+    def git_sources(packages):
+        result = {}
+        for package in packages:
+            source = package.get("source", "")
+            if source.startswith("git+"):
+                repository = source.split("?", 1)[0].split("#", 1)[0]
+                result.setdefault(repository, set()).add(source)
+        return result
+    old_git, new_git = git_sources(old), git_sources(new)
+    for repository in old_git.keys() & new_git.keys():
+        if not new_git[repository].issubset(old_git[repository]):
+            errors.append(f"Révision Git modifiée : {repository}")
+    old_sources = {}
+    for package in old:
+        old_sources.setdefault((package["name"], package["version"]), set()).add(package.get("source"))
+    for package in new:
+        key = (package["name"], package["version"])
+        source = package.get("source")
+        previous = old_sources.get(key, set())
+        if previous and source not in previous and not (key[0] in {"cc", "v8"} and source is None):
+            errors.append(f"Source modifiée : {key[0]} {key[1]}")
+    def identities(packages):
+        return {(p["name"], p["version"], p.get("source", "")) for p in packages}
+    old_ids, new_ids = identities(old), identities(new)
+    def describe(items):
+        return [{"name": name, "version": version, "source": source}
+                for name, version, source in sorted(items)]
+    write_json(report, {
+        "before_sha256": digest(before), "after_sha256": digest(after),
+        "added": describe(new_ids - old_ids), "removed": describe(old_ids - new_ids),
+        "errors": errors,
+    })
+    if errors:
+        raise ValueError("Préparation du lockfile refusée : " + "; ".join(errors))
+
+
 def elf_arch(path: Path) -> str:
     with path.open("rb") as f:
         header = f.read(20)
@@ -283,7 +329,7 @@ def metadata(destination: Path, lock: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=["nightly", "validate-toolchain", "validate-version", "source-toolchain", "prepare-recipe", "v8-version", "package", "metadata"])
+    parser.add_argument("operation", choices=["nightly", "validate-toolchain", "validate-version", "source-toolchain", "prepare-recipe", "v8-version", "check-lock", "package", "metadata"])
     parser.add_argument("args", nargs="+")
     options = parser.parse_args()
     match options.operation:
@@ -300,6 +346,8 @@ def main() -> None:
             prepare_recipe(Path(options.args[0]), Path(options.args[1]), Path(options.args[2]), options.args[3], Path(options.args[4]))
         case "v8-version":
             print(v8_version(Path(options.args[0])))
+        case "check-lock":
+            check_lock_transition(Path(options.args[0]), Path(options.args[1]), Path(options.args[2]))
         case "package":
             package(Path(options.args[0]), Path(options.args[1]), options.args[2])
         case "metadata":

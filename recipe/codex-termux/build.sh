@@ -29,6 +29,18 @@ codex_python() {
 		"$CODEX_SUPPORT_DIR/tools.py" "$@"
 }
 
+codex_prepare_lockfile() {
+	local phase="$1"
+	local records="$(dirname "$CODEX_BUILD_METADATA")/lockfiles-$TERMUX_ARCH"
+	mkdir -p "$records"
+	cp Cargo.lock "$records/$phase-before.lock"
+	# La release peut nécessiter une normalisation initiale. Cargo préserve les
+	# versions compatibles déjà verrouillées ; consigner et contrôler le résultat.
+	cargo +"$CODEX_RUST_TOOLCHAIN" metadata --format-version 1 >/dev/null
+	codex_python check-lock "$records/$phase-before.lock" Cargo.lock "$records/$phase-changes.json"
+	cp Cargo.lock "$records/$phase-after.lock"
+}
+
 termux_step_pre_configure() {
 	codex_setup_rust
 
@@ -37,6 +49,7 @@ termux_step_pre_configure() {
 	: "${CARGO_HOME:=$HOME/.cargo}"
 	export CARGO_HOME
 
+	codex_prepare_lockfile codex-upstream
 	cargo +"$CODEX_RUST_TOOLCHAIN" vendor --locked
 	find ./vendor \
 		-mindepth 1 -maxdepth 1 -type d \
@@ -60,13 +73,8 @@ termux_step_pre_configure() {
 		termux_error_exit "Expected [patch.crates-io] in the inspected Codex sources"
 	sed -i '/\[patch.crates-io\]/a cc = { path = "./vendor/cc" }' Cargo.toml
 	sed -i '/\[patch.crates-io\]/a v8 = { path = "./vendor/v8" }' Cargo.toml
-	# Enregistrer dans le lockfile les deux sources locales ; les versions V8
-	# doivent rester celles du verrouillage amont.
-	local original_v8
-	original_v8="$(codex_python v8-version Cargo.lock)"
-	cargo +"$CODEX_RUST_TOOLCHAIN" metadata --format-version 1 >/dev/null
-	[[ "$(codex_python v8-version Cargo.lock)" == "$original_v8" ]] || \
-		termux_error_exit "The V8 version changed when applying local crate patches"
+	# Enregistrer les deux sources locales avec les mêmes contrôles de versions.
+	codex_prepare_lockfile codex-local-patches
 }
 
 __fetch_rusty_v8() {
@@ -95,6 +103,7 @@ __build_rusty_v8() {
 	local __SRC_DIR="$TERMUX_PKG_SRCDIR"/librusty_v8
 	pushd "$__SRC_DIR"
 
+	codex_prepare_lockfile rusty-v8
 	termux_setup_ninja
 	termux_setup_gn
 
