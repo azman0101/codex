@@ -4,7 +4,7 @@ Build Android de [Codex CLI 0.160.0](https://github.com/openai/codex/releases/ta
 
 Le tag `rust-v0.160.0` désigne **Codex**. La toolchain du compilateur Rust déclarée par ces sources est **1.95.0** ; ce sont deux versions distinctes.
 
-**Validation actuelle :** 29 tests locaux réussis. Les cinq patches actifs ont été appliqués sans fuzz aux fichiers amont exacts de `cc 1.2.55`, `rusty_v8 150.4.0` et Chromium `8acb33ac`. Le build Android complet et l’exécution sur téléphone restent à valider. Un artefact binaire n’est disponible qu’après un build réussi.
+**Validation actuelle :** 30 tests locaux réussis. Les cinq patches actifs ont été appliqués sans fuzz aux fichiers amont exacts de `cc 1.2.55`, `rusty_v8 150.4.0` et Chromium `8acb33ac`. Le build Android complet et l’exécution sur téléphone restent à valider. Un artefact binaire n’est disponible qu’après un build réussi.
 
 ## Compiler avec GitHub Actions
 

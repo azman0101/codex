@@ -5,7 +5,7 @@ arch="${1:?Architecture requise}"
 [[ "$arch" == aarch64 || "$arch" == x86_64 ]]
 support="$PWD/codex-support"
 "$support/bin/uv" run --offline --no-project --python /usr/bin/python3 \
-    -c 'import sys; assert sys.version_info >= (3, 11), "Python 3.11 minimum requis dans le conteneur"'
+    python -c 'import sys; assert sys.version_info >= (3, 11), "Python 3.11 minimum requis dans le conteneur"'
 toolchain="$(cat "$support/toolchain.request")"
 mkdir -p output
 printf '%s\n' "$toolchain" > output/codex-termux-toolchain.lock

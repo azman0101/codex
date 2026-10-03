@@ -9,6 +9,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -21,6 +22,38 @@ spec.loader.exec_module(tools)
 
 
 class NativeTests(unittest.TestCase):
+    def test_container_entrypoint_reaches_build_with_real_uv(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            framework = Path(tmp)
+            support = framework / "codex-support"
+            (support / "bin").mkdir(parents=True)
+            uv = shutil.which("uv")
+            self.assertIsNotNone(uv, "uv requis pour tester le point d’entrée")
+            (support / "bin/uv").symlink_to(uv)
+            for name, value in {
+                "toolchain.request": "1.95.0",
+                "framework.commit": "fixture-framework",
+                "image.digest": "fixture-image",
+                "TUR-COMMIT.txt": "fixture-origin",
+            }.items():
+                (support / name).write_text(value + "\n")
+            build = framework / "build-package.sh"
+            build.write_text('#!/bin/bash\nset -eu\nprintf "%s\\n" "$@" > "$TEST_BUILD_LOG"\n')
+            build.chmod(0o755)
+            # Seul le montage absolu du conteneur est adapté à la fixture.
+            # Le script complet et son uv sont réellement exécutés.
+            script = (ROOT / "in-container.sh").read_text().replace(
+                "cd /home/builder/termux-packages", 'cd "$TEST_FRAMEWORK"', 1)
+            log = framework / "build.args"
+            env = os.environ | {"TEST_FRAMEWORK": str(framework), "TEST_BUILD_LOG": str(log)}
+            result = subprocess.run(["bash", "-s", "--", "aarch64"], input=script,
+                                    text=True, capture_output=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(log.read_text().splitlines(), [
+                "-f", "-I", "-a", "aarch64", "--format", "debian",
+                "-o", str(framework / "output"), "./custom-packages/codex-termux"])
+            self.assertEqual((framework / "output/codex-termux-toolchain.lock").read_text(), "1.95.0\n")
+
     @classmethod
     def setUpClass(cls):
         cls.scratch = tempfile.TemporaryDirectory(prefix="codex-native-tests-")
