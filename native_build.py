@@ -603,6 +603,7 @@ def prepare_v8(work: Path, ndk: Path, env: dict):
             raise ValueError("Interrupted V8 patching. Rename sources/rusty_v8 and rerun; Cargo caches are retained.")
         apply_patch(directory, ROOT / "patches/0001-unset-BINDGEN_EXTRA_CLANG_ARGS-in-v8_s-bindgen.patch")
         apply_patch(directory, ROOT / "patches/0003-declare-android-ndk-args.patch")
+        apply_patch(directory, ROOT / "patches/0005-allow-android-on-macos-host.patch")
         patch = work / "metadata/0004-native-macos-android.patch"
         generated = native_v8_patch(directory)
         if generated != (ROOT / "patches/0004-native-macos-android.patch").read_text():
@@ -612,12 +613,17 @@ def prepare_v8(work: Path, ndk: Path, env: dict):
         # Linux-only 0002-install-sysroot.patch is intentionally never applied.
         normalize_lock(directory, work / "metadata/lockfiles-v8", "standalone", env)
         write_json(marker, {"commit": V8_COMMIT, "native_patch_sha256": file_hash(patch), "prepared_state": prepared_state(directory, ("Cargo.lock",))})
-    elif json.loads(marker.read_text())["prepared_state"] != prepared_state(directory, ("Cargo.lock",)):
-        raise ValueError("Prepared V8 sources changed; use a new workspace")
-    # Chromium asserts a Linux host for Android targets and its Mac clang package
-    # lacks Android runtimes. Applied separately so prepared workspaces resume.
-    if 'host_os == "linux" || host_os == "mac"' not in (directory / "build/config/BUILDCONFIG.gn").read_text():
-        apply_patch(directory, ROOT / "patches/0005-allow-android-on-macos-host.patch")
+    else:
+        marker_data = json.loads(marker.read_text())
+        if 'host_os == "linux" || host_os == "mac"' not in (directory / "build/config/BUILDCONFIG.gn").read_text():
+            apply_patch(directory, ROOT / "patches/0005-allow-android-on-macos-host.patch")
+            write_json(marker, dict(marker_data, prepared_state=prepared_state(directory, ("Cargo.lock",))))
+        elif marker_data.get("prepared_state") != prepared_state(directory, ("Cargo.lock",)):
+            pre_0005_build_diff = "ccfb7b600340f891a9ed3e09148d4591bd4583bd362dd2a5935fac8ff29a343a"
+            if marker_data.get("prepared_state", {}).get("build_diff_sha256") == pre_0005_build_diff:
+                write_json(marker, dict(marker_data, prepared_state=prepared_state(directory, ("Cargo.lock",))))
+            else:
+                raise ValueError("Prepared V8 sources changed; use a new workspace")
     link = directory / "third_party/android_ndk"
     if link.is_symlink():
         if link.resolve() != ndk.resolve():
