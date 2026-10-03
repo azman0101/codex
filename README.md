@@ -1,5 +1,7 @@
 # Codex 0.160.0: native Mac host, Android output
 
+This project builds [openai/codex](https://github.com/openai/codex) (Codex CLI, Apache-2.0). It is an unofficial build tooling bundle and is not affiliated with or endorsed by OpenAI. The upstream license is included as [`LICENSE`](LICENSE).
+
 This bundle implements a separate macOS → Android build. Rust, GN, Ninja, Clang and V8's build-time programs run on macOS. The output is Codex CLI **0.160.0** for Android/Termux, including `codex-code-mode-host`. It does not produce a Codex executable for macOS.
 
 It uses neither Docker nor Linux emulation, FUSE, the Termux Linux package-builder, or TUR. It does not edit repositories on GitHub, dispatch workflows, or reuse your Docker build directory.
