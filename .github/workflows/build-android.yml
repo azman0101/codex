@@ -1,0 +1,58 @@
+name: Build Codex Android
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'legacy/**']
+  workflow_dispatch:
+    inputs:
+      codex_version:
+        type: string
+        description: Version Codex CLI exacte, sans le préfixe rust-v
+        required: true
+        default: '0.160.0'
+      architecture:
+        type: choice
+        description: Architecture Termux
+        options: [aarch64, x86_64]
+        default: aarch64
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: false
+      - name: Validate local scripts
+        run: uv run --no-project --python 3.11 tests/test_native.py
+      - name: Build Android
+        env:
+          BUILD_ARCH: ${{ inputs.architecture || 'aarch64' }}
+          CODEX_VERSION: ${{ inputs.codex_version || '0.160.0' }}
+        run: bash build-linux.sh "$BUILD_ARCH" "$CODEX_VERSION"
+      - name: Upload native archives
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: codex-termux-${{ inputs.codex_version || '0.160.0' }}-${{ inputs.architecture || 'aarch64' }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+            install-codex-termux.sh
+          if-no-files-found: error
+      - name: Upload build metadata
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: codex-termux-build-metadata-${{ inputs.codex_version || '0.160.0' }}-${{ inputs.architecture || 'aarch64' }}
+          include-hidden-files: true
+          path: |
+            .build/*/termux-packages/output/codex-termux-build-*.json
+            .build/*/termux-packages/output/codex-termux-toolchain.lock
+            .build/*/framework.commit
+            .build/*/image.digest
+            .build/*/source.json
+            .build/*/release.json
+          if-no-files-found: ignore

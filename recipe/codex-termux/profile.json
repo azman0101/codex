@@ -1,0 +1,8 @@
+{
+  "codex_version": "0.160.0",
+  "cc_version": "1.2.55",
+  "v8_version": "150.4.0",
+  "rust_toolchain": "1.95.0",
+  "chromium_build_commit": "8acb33ac8dceef0503443109c0a92988189563ef",
+  "v8_submodule_commit": "ac1e23989121713ca642f6650b34deff7b686896"
+}

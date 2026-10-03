@@ -1,0 +1,38 @@
+--- a/build.rs
++++ b/build.rs
+@@ -54,6 +54,12 @@
+     println!("cargo:rerun-if-env-changed={env}");
+   }
+ 
++  // Termux: select archives/bindings by Cargo target, including host builds.
++  let target_u = env::var("TARGET").unwrap().replace('-', "_").to_uppercase();
++  for name in ["RUSTY_V8_ARCHIVE", "RUSTY_V8_SRC_BINDING_PATH"] {
++    println!("cargo:rerun-if-env-changed={name}_{target_u}");
++  }
++
+   // Detect if trybuild tests are being compiled.
+   let is_trybuild = env::var_os("DENO_TRYBUILD").is_some();
+ 
+@@ -701,6 +707,10 @@
+ }
+ 
+ fn static_lib_url() -> String {
++  let target_u = env::var("TARGET").unwrap().replace('-', "_").to_uppercase();
++  if let Ok(archive) = env::var(format!("RUSTY_V8_ARCHIVE_{target_u}")) {
++    return archive;
++  }
+   if let Ok(custom_archive) = env::var("RUSTY_V8_ARCHIVE") {
+     return custom_archive;
+   }
+@@ -1005,6 +1015,11 @@
+ }
+ 
+ fn print_prebuilt_src_binding_path() {
++  let target_u = env::var("TARGET").unwrap().replace('-', "_").to_uppercase();
++  if let Ok(binding) = env::var(format!("RUSTY_V8_SRC_BINDING_PATH_{target_u}")) {
++    println!("cargo:rustc-env=RUSTY_V8_SRC_BINDING_PATH={binding}");
++    return;
++  }
+   if let Ok(binding) = env::var("RUSTY_V8_SRC_BINDING_PATH") {
+     println!("cargo:rustc-env=RUSTY_V8_SRC_BINDING_PATH={binding}");
+     return;
