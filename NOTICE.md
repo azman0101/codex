@@ -1,4 +1,4 @@
-Native macOS build launcher and driver created for the Codex 0.160.0 Android port, 2026-10-03.
+Native macOS build launcher and driver created for the Codex 0.162.0 Android port, 2026-10-03.
 
 `verified_tools.py`, `install-codex-termux.sh` and the existing patches are adapted/copied from azman0101/codex at f09736bd5da206635ad7336af79c04f512a9db7f, incorporating the previously inspected Termux/TUR porting patches. This bundle does not install or activate TUR.
 

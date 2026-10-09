@@ -1,4 +1,4 @@
-# AGENTS.md — Codex 0.160.0 native macOS → Android build
+# AGENTS.md — Codex 0.162.0 native macOS → Android build
 
 Notes for coding agents (and humans) working on this bundle. Read this before changing anything.
 

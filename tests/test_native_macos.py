@@ -211,7 +211,7 @@ class NativeBuildTests(unittest.TestCase):
         subprocess.run(["bash", "-n", launcher], check=True)
         output = subprocess.check_output(["bash", launcher, "help"], text=True)
         self.assertIn("Native macOS host tools", output)
-        self.assertIn("0.160.0", output)
+        self.assertIn("0.162.0", output)
 
     def test_ndk_dmg_with_root_and_app_properties_selects_toolchain(self):
         import plistlib
@@ -478,12 +478,12 @@ class NativeBuildTests(unittest.TestCase):
             deps = {"packages": [{"name": "openssl", "version": "1:3.6.5"}, {"name": "libc++", "version": "30"}]}
             with patch.object(n, "verify_executable", return_value={"libc++_shared.so", "libssl.so.3"}), patch.object(n, "run", return_value="fixture compiler version"):
                 n.package_outputs(work, "aarch64", codex, v8, work / "ndk", deps, "aarch64-apple-darwin")
-            archive = work / "output/aarch64/codex-0.160.0-android-aarch64.tar.gz"
+            archive = work / "output/aarch64/codex-0.162.0-android-aarch64.tar.gz"
             self.assertEqual(archive.with_name(archive.name + ".sha256").read_text().split()[0], n.file_hash(archive))
             with tarfile.open(archive) as content:
                 self.assertIn("bin/codex-code-mode-host", content.getnames())
                 manifest = json.load(content.extractfile("manifest.json"))
-                self.assertEqual(manifest["version"], "0.160.0")
+                self.assertEqual(manifest["version"], "0.162.0")
                 self.assertEqual(len(manifest["dependencies"]), 2)
                 for name in ("codex", "codex-code-mode-host"):
                     digest = hashlib.sha256(content.extractfile("bin/" + name).read()).hexdigest()

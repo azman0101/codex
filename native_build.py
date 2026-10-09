@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native macOS -> Android Codex 0.160.0. Run through uv, Python 3.11+."""
+"""Native macOS -> Android Codex 0.162.0. Run through uv, Python 3.11+."""
 from __future__ import annotations
 
 import argparse
@@ -28,11 +28,11 @@ import zipfile
 import verified_tools as verified
 
 ROOT = Path(__file__).resolve().parent
-VERSION = "0.160.0"
+VERSION = "0.162.0"
 RUST = "1.95.0"
 V8 = "150.4.0"
 CC_VERSION = "1.2.55"
-CODEX_COMMIT = "a956835d020762cb2b570053af06f643a11c0ecc"
+CODEX_COMMIT = "c1382380de69521303b416720a52f42d51af6248"
 V8_COMMIT = "5c15a6995c9bb4bacd3e341b59fff32c909c80bf"
 BUILD_COMMIT = "8acb33ac8dceef0503443109c0a92988189563ef"
 V8_ENGINE_COMMIT = "ac1e23989121713ca642f6650b34deff7b686896"

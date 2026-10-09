@@ -33,11 +33,14 @@
   ],
   "macos_end_to_end_build": "passed: native macOS Apple Silicon host aarch64-apple-darwin (M2 Max, Xcode 27, NDK r30)",
   "build_artifact": {
-    "archive": "codex-0.160.0-android-aarch64.tar.gz",
-    "archive_sha256": "ae7eced47d1ec7b9fdb47ca82fe369c381c2358de676dc66d9096827feadf7c7",
-    "binaries": ["bin/codex", "bin/codex-code-mode-host"]
+    "archive": "codex-0.162.0-android-aarch64.tar.gz",
+    "archive_sha256": "5f745389446da6cddf440786906c706696fc354a558cfbf640c88bcd9e73c7e5",
+    "binaries": [
+      "bin/codex",
+      "bin/codex-code-mode-host"
+    ]
   },
-  "android_device_validation": "passed: installed and verified on physical Android 16 device (aarch64) in Termux; interactive CLI and embedded mode running successfully",
+  "android_device_validation": "pending for 0.162.0 (no device connected at build time); 0.160.0 was verified on a physical Android 16 device in Termux",
   "offline_regression_python": "3.12.14",
   "gn_provisioning": [
     {

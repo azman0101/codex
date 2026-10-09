@@ -1,4 +1,4 @@
-# Codex 0.160.0: native Mac host, Android output
+# Codex 0.162.0: native Mac host, Android output
 
 This project builds [openai/codex](https://github.com/openai/codex) (Codex CLI, Apache-2.0). It is an unofficial build tooling bundle and is not affiliated with or endorsed by OpenAI. The upstream license is included as [`LICENSE`](LICENSE).
 
@@ -83,7 +83,7 @@ The installer uses already configured official Termux packages and never activat
 
 ## Porting changes and integrity
 
-- Codex tag `rust-v0.160.0` is checked against commit `a956835d020762cb2b570053af06f643a11c0ecc`.
+- Codex tag `rust-v0.162.0` is checked against commit `c1382380de69521303b416720a52f42d51af6248`.
 - Rust `1.95.0`, crate `cc 1.2.55`, crate `v8 150.4.0`, rusty_v8 commit `5c15a6995c9bb4bacd3e341b59fff32c909c80bf`, V8 commit `ac1e23989121713ca642f6650b34deff7b686896`, and Chromium build commit `8acb33ac8dceef0503443109c0a92988189563ef` remain pinned.
 - GN revision `3357c4f51b1a9e676378c695dd9c7e9911c35ee6` comes from that V8 commit's `DEPS`. Both Mac CPU packages use fixed CIPD instance IDs and SHA-256 values. The driver verifies GN's native Mach-O architecture and reported revision, adds its private executable directory to PATH, and supplies its absolute path to V8. Downloads are reused with checksum checks. `metadata/gn-bootstrap.json` records the source and hashes and is included in `BUILD.json`.
 - Mac NDK r30's official DMG size and published SHA-1 are checked before mounting and copying; SHA-256 is additionally recorded. The NDK's `source.properties` must match the exact revision.

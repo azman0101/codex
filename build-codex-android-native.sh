@@ -13,7 +13,7 @@ Usage: bash build-codex-android-native.sh setup
        bash build-codex-android-native.sh build [aarch64|x86_64]
        bash build-codex-android-native.sh monitor
 
-Codex 0.160.0, Rust 1.95.0, Android NDK r30, API 24.
+Codex 0.162.0, Rust 1.95.0, Android NDK r30, API 24.
 Native macOS host tools; Android output. No container or emulation.
 Requires full Xcode with macOS SDK >= 15 and native Homebrew.
 Setup installs Homebrew dependencies, pinned Chromium GN, Rust and the Mac NDK; it does not build.
